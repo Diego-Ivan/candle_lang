@@ -71,9 +71,15 @@ where
                 Ok(Token::new(TokenType::Colon, start_col, start_line))
             }
             _ => {
-                let err_char = self.current_char as u8;
+                let err_char = self.current_char;
+                let err_byte = self.current_char as u8;
                 self.advance(); // Skip the bad character to avoid infinite loop
-                Err(error::TokenizerError::UnknownCharacter(err_char))
+                Err(error::TokenizerError::UnknownCharacter {
+                    character: err_char,
+                    byte: err_byte,
+                    line: start_line,
+                    column: start_col,
+                })
             }
         }
     }
@@ -165,8 +171,15 @@ where
             }
         }
 
-        let number = number_str.parse::<f64>().unwrap();
-        Ok(Token::new(TokenType::Number(number), start_col, start_line))
+        match number_str.parse::<f64>() {
+            Ok(number) => Ok(Token::new(TokenType::Number(number), start_col, start_line)),
+            Err(e) => Err(error::TokenizerError::InvalidNumber {
+                value: number_str,
+                line: start_line,
+                column: start_col,
+                reason: e.to_string(),
+            }),
+        }
     }
 
     fn read_string(&mut self, quote: char, start_col: usize, start_line: usize) -> TokenizerResult<Token> {
@@ -182,7 +195,10 @@ where
             self.advance(); // Skip closing quote
             Ok(Token::new(TokenType::String(string), start_col, start_line))
         } else {
-            Err(error::TokenizerError::UnknownCharacter(self.current_char as u8))
+            Err(error::TokenizerError::UnterminatedString {
+                line: start_line,
+                column: start_col,
+            })
         }
     }
 }
