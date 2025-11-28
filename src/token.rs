@@ -1,6 +1,8 @@
 #[derive(Debug, Clone)]
 pub enum TokenType {
     Semicolon,
+    Comma,
+    Colon,
     Load,
     Predict,
     Train,
@@ -11,10 +13,8 @@ pub enum TokenType {
     Select,
     Id(String),
     Number(f64),
-    RightParen,
-    LeftParen,
-    RightBracket,
-    LeftBracket,
+    RightBrace,
+    LeftBrace,
     Eof,
     From,
     String(String),
@@ -34,5 +34,19 @@ impl Token {
             column,
             line,
         }
+    }
+
+    // --- Getter Methods ---
+
+    pub fn get_type(&self) -> &TokenType {
+        &self.token_type
+    }
+
+    pub fn get_line(&self) -> usize {
+        self.line
+    }
+
+    pub fn get_column(&self) -> usize {
+        self.column
     }
 }
