@@ -100,7 +100,7 @@ where
     fn advance(&mut self) {
         // Check if the character is a LINE BREAK
         if self.current_char == '\n' {
-            self.line = self.line + 1;
+            self.line += 1;
             self.column = 1;
         } else if self.current_char != '\0' {
             self.column += 1;
@@ -118,9 +118,8 @@ where
         self.input_buffer[self.buffer_pos..]
             .chars()
             .next()
-            .map(|ch| {
+            .inspect(|ch| {
                 self.buffer_pos += ch.len_utf8();
-                ch
             })
             .unwrap_or('\0')
     }

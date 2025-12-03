@@ -159,12 +159,12 @@ impl Parser {
 
     fn parse_load(&mut self) -> ParserResult<Statement> {
         let identifier = expect_identifier!(self);
-        Ok(Statement::Load(String::from(identifier)))
+        Ok(Statement::Load(identifier))
     }
 
     fn parse_predict(&mut self) -> ParserResult<Statement> {
         let identifier = expect_identifier!(self);
-        Ok(Statement::Predict(String::from(identifier)))
+        Ok(Statement::Predict(identifier))
     }
 
     fn parse_analyze(&mut self) -> ParserResult<Statement> {
