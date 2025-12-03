@@ -1,30 +1,112 @@
-# Candle Language Tokenizer
+# Candle Language
 
-A tokenizer implementation for the Candle programming language, a domain-specific language for machine learning operations.
+Candle is a domain-specific language (DSL) for machine learning workflows, specifically designed for training and evaluating computer vision models like YOLO. It provides a simple, declarative syntax for common ML operations.
 
 ## Overview
 
-The Candle language tokenizer converts source code into a stream of tokens using a Deterministic Finite Automaton (DFA) approach. It provides detailed error reporting with position tracking (line and column numbers) for better debugging experience.
+This project includes a complete implementation of the Candle language with:
+- **Tokenizer**: Converts source code into tokens using a DFA approach
+- **Parser**: Builds an Abstract Syntax Tree (AST) from tokens
+- **CLI Tool**: `pycandle` command-line interface for parsing Candle scripts
 
 ## Language Features
 
 ### Keywords
-- `LOAD` - Load data
-- `PREDICT` - Make predictions
-- `TRAIN` - Train models
-- `INIT` - Initialize
-- `SPLIT` - Split data
-- `ANALYZE` - Analyze data
-- `EVALUATE` - Evaluate models
-- `SELECT` - Select data
-- `FROM` - Source specification
+- `LOAD` - Load a dataset
+- `SELECT` - Select a model or configuration
+- `FROM` - Specify a file path (used with SELECT)
+- `SPLIT` - Define data split ratios
+- `TRAIN` - Train the model
+- `EVALUATE` - Evaluate model with metrics
+- `PREDICT` - Generate predictions
+- `ANALYZE` - Analyze results
+- `INIT` - Initialize parameters
+
+### Statements
+
+#### LOAD
+Load a dataset by name:
+```candle
+LOAD oxfordpets;
+LOAD dota2025;
+```
+
+#### SELECT FROM
+Select a model configuration file:
+```candle
+SELECT FROM 'yolov8m.yaml';
+SELECT FROM 'rcnn.yaml';
+```
+
+#### SPLIT
+Define dataset split ratios using a dictionary:
+```candle
+SPLIT { train: 80, test: 10, val: 10 };
+SPLIT { train: 100 };
+```
+
+#### TRAIN
+Train the model:
+```candle
+TRAIN;
+```
+
+#### EVALUATE
+Evaluate with specified metrics:
+```candle
+EVALUATE mAP, recall, precision, AP50;
+EVALUATE mAP50, recall;
+```
+
+#### PREDICT
+Generate predictions:
+```candle
+PREDICT predictresults;
+```
+
+#### ANALYZE
+Analyze results:
+```candle
+ANALYZE health, confusionmatrix;
+ANALYZE health, splits;
+```
 
 ### Token Types
-- **Keywords**: Reserved words for language operations (uppercase only: `LOAD`, `PREDICT`, etc.)
-- **Identifiers**: Variable and function names (case-sensitive)
-- **Numbers**: Integer and floating-point literals
-- **Strings**: Text enclosed in single quotes (`'...'`)
+- **Keywords**: Reserved words (uppercase only: `LOAD`, `PREDICT`, `TRAIN`, etc.)
+- **Identifiers**: Variable and dataset names (case-sensitive, alphanumeric)
+- **Numbers**: Integer and floating-point literals (e.g., `80`, `10.5`)
+- **Strings**: Text enclosed in single quotes (`'yolov8m.yaml'`)
 - **Delimiters**: `{`, `}`, `;`, `,`, `:`
+
+## Complete Example
+
+Here's a full Candle program demonstrating the workflow:
+
+```candle
+LOAD oxfordpets;
+SELECT FROM 'yolov8m.yaml';
+
+SPLIT {
+  train: 80, 
+  test: 10, 
+  val: 10
+};
+TRAIN;
+
+EVALUATE mAP, recall, precision, AP50;
+
+PREDICT predictresults;
+ANALYZE health, confusionmatrix;
+```
+
+This program:
+1. Loads the Oxford Pets dataset
+2. Selects the YOLOv8m model configuration
+3. Splits data into 80% training, 10% test, 10% validation
+4. Trains the model
+5. Evaluates using multiple metrics
+6. Generates predictions
+7. Analyzes model health and confusion matrix
 
 ## Architecture
 
@@ -37,89 +119,260 @@ pub struct Token {
 }
 ```
 
-Each token contains:
-- **token_type**: The type of token (keyword, identifier, number, etc.)
+Each token tracks:
+- **token_type**: The classification (keyword, identifier, number, string, delimiter)
 - **column**: Column position in source code
 - **line**: Line number in source code
 
-### DFA State Machine
+### Statement Types
 
-The tokenizer uses a DFA with the following state transitions:
+The parser generates an AST with the following statement types:
+
+```rust
+pub enum Statement {
+    Load(String),                      // Dataset name
+    Predict(String),                   // Output name
+    Analyze(Vec<String>),              // List of metrics
+    Evaluate(Vec<String>),             // List of metrics
+    Select(Select),                    // Model selection
+    Train,                             // No arguments
+    Split(HashMap<String, f64>),       // Split ratios
+    Init(HashMap<String, f64>),        // Parameters
+}
+
+pub enum Select {
+    From(String),        // File path
+    Identifier(String),  // Model name
+}
+```
+
+### Tokenizer DFA State Machine
+
+The tokenizer implements a DFA with state transitions:
 
 ```
 Start State → 
   ├─ Letter → Identifier/Keyword State
-  ├─ Digit → Number State
-  ├─ Quote → String State
-  ├─ Delimiter → Single-char token
+  ├─ Digit → Number State (supports decimals with '.')
+  ├─ Single Quote (') → String State
+  ├─ Delimiter ({, }, ;, ,, :) → Single-char token
   ├─ Whitespace → Skip and continue
   └─ Unknown → Error
 ```
 
+### Parser Grammar
+
+The parser implements a recursive descent parser with the following rules:
+
+```
+program        → statement* EOF
+statement      → loadStmt | predictStmt | analyzeStmt | evaluateStmt 
+                 | trainStmt | selectStmt | splitStmt | initStmt
+loadStmt       → "LOAD" identifier ";"
+predictStmt    → "PREDICT" identifier ";"
+analyzeStmt    → "ANALYZE" argumentList ";"
+evaluateStmt   → "EVALUATE" argumentList ";"
+trainStmt      → "TRAIN" ";"
+selectStmt     → "SELECT" (identifier | "FROM" string) ";"
+splitStmt      → "SPLIT" dictionary ";"
+initStmt       → "INIT" dictionary ";"
+argumentList   → identifier ("," identifier)*
+dictionary     → "{" identifier ":" number ("," identifier ":" number)* "}"
+```
+
 ### Error Handling
 
-The tokenizer provides detailed error messages including:
-- **UnknownCharacter**: Unrecognized bytes with position (e.g., unsupported symbols like `.`, `@`, `#`)
-- Error recovery: Tokenizer advances past unknown characters to continue processing
+**Tokenizer Errors:**
+- `UnknownCharacter`: Invalid characters with position tracking
+- `UnterminatedString`: Strings not closed before newline or EOF
+- `InvalidNumber`: Malformed numeric literals
 
-## Implementation Phases
+**Parser Errors:**
+- `ExpectedId`: Missing identifier
+- `ExpectedSemicolon`: Missing statement terminator
+- `ExpectedColon`: Missing colon in dictionary
+- `ExpectedNumber`: Missing numeric value
+- `InvalidStatement`: Unrecognized statement keyword
+- `NotADictionary`: Missing opening brace
+- `NonTerminatedDictionary`: Missing closing brace
+- `NoStringAfterFrom`: Missing file path after FROM
+- `InvalidSelect`: Invalid SELECT syntax
 
-### 🔧 Phase 4: Enhanced Errors
-- [ ] Expand error types with position info
-- [ ] Add contextual error messages
-- [ ] Implement error recovery strategies
+Both provide line and column information for debugging.
 
-### 🔧 Phase 5: Iterator Implementation
-- [ ] Complete `Iterator` trait for token streaming
-- [ ] Handle EOF correctly
+## Installation & Usage
 
-### 🔧 Phase 6: Testing
-- [ ] Unit tests for individual components
-- [ ] Integration tests for complete tokenization
-- [ ] Error handling tests
-- [ ] Position tracking validation
-- [ ] Edge case tests
+### Building from Source
 
-### 🔧 Phase 7: Public API
-- [ ] Constructor methods
-- [ ] `tokenize_all()` for batch processing
-- [ ] Documentation and examples
+```bash
+cargo build --release
+```
 
-## Usage Example
+### Running the CLI
+
+The `pycandle` CLI tool parses Candle files and displays their AST:
+
+```bash
+pycandle ast <path-to-candle-file>
+```
+
+**Example:**
+```bash
+pycandle ast examples/valid/script.candle
+```
+
+**Output:**
+```
+---CÓDIGO ORIGINAL---
+LOAD oxfordpets;
+SELECT FROM 'yolov8m.yaml';
+
+SPLIT {
+  train: 80, 
+  test: 10, 
+  val: 10
+};
+TRAIN;
+
+EVALUATE mAP, recall, precision, AP50;
+
+PREDICT predictresults;
+ANALYZE health, confusionmatrix;
+--------------------
+
+::AST::
+
+PROGRAM
+|(stmt LOAD)
+|---(id oxfordpets)
+|(stmt SELECT)
+|---(FROM yolov8m.yaml)
+|(stmt SPLIT)
+|---(entry key(train), value(80))
+|---(entry key(test), value(10))
+|---(entry key(val), value(10))
+|(stmt TRAIN)
+|(stmt EVALUATE)
+|---(id mAP)
+|---(id recall)
+|---(id precision)
+|---(id AP50)
+|(stmt PREDICT)
+|---(id predictresults)
+|(stmt ANALYZE)
+|---(id health)
+|---(id confusionmatrix)
+```
+
+## Library Usage
+
+### Tokenizer
 
 ```rust
-use candle_lang::tokenizer::Tokenizer;
 use std::io::BufReader;
+use candle_lang::tokenizer::Tokenizer;
 
-let source = "LOAD data FROM 'file.csv';";
+let source = "LOAD dataset; TRAIN;";
 let reader = BufReader::new(source.as_bytes());
 let tokenizer = Tokenizer::new(reader);
 
-for token in tokenizer {
-    match token {
-        Ok(t) => println!("{:?}", t),
+for token_result in tokenizer {
+    match token_result {
+        Ok(token) => println!("{:?}", token),
         Err(e) => eprintln!("Error: {}", e),
     }
 }
 ```
 
-## Testing Strategy
+### Parser
 
-### Unit Tests
-- Individual component testing (whitespace, identifiers, numbers, strings)
-- Keyword matching verification
-- Position tracking accuracy
+```rust
+use candle_lang::parser::Parser;
+use candle_lang::tokenizer::Tokenizer;
+use std::io::BufReader;
 
-### Integration Tests
-- Complete statement tokenization
-- Multi-line program parsing
-- Mixed token sequences
+let source = "LOAD oxfordpets; TRAIN; EVALUATE mAP;";
+let reader = BufReader::new(source.as_bytes());
+let tokenizer = Tokenizer::new(reader);
+let tokens: Vec<_> = tokenizer.map(|r| r.unwrap()).collect();
 
-### Error Tests
-- Unknown character detection
-- Unterminated string handling (strings ending with newline)
-- Multiple errors in single input
-- Position accuracy in errors
+let mut parser = Parser::new(tokens);
+match parser.program() {
+    Ok(statements) => {
+        for stmt in statements {
+            println!("{:?}", stmt);
+        }
+    }
+    Err(e) => eprintln!("Parse error: {}", e),
+}
+```
+
+## Testing
+
+The project includes comprehensive tests for both tokenizer and parser:
+
+### Running Tests
+
+```bash
+cargo test
+```
+
+### Tokenizer Tests
+- **Unit tests**: Individual token recognition (whitespace, identifiers, keywords, numbers, strings)
+- **Keyword matching**: Case-sensitive keyword detection (uppercase only)
+- **Position tracking**: Accurate line and column reporting
+- **Error handling**: Unknown characters, unterminated strings
+- **Multi-line programs**: Proper line tracking across newlines
+
+### Parser Tests
+- **Statement parsing**: All statement types (LOAD, TRAIN, EVALUATE, etc.)
+- **Dictionary parsing**: SPLIT and INIT with key-value pairs
+- **Argument lists**: ANALYZE and EVALUATE with comma-separated identifiers
+- **SELECT variations**: Both identifier and FROM forms
+- **Error detection**: Missing semicolons, invalid syntax, unterminated dictionaries
+- **Complete programs**: Full multi-statement programs
+
+## Examples
+
+The `examples/valid/` directory contains sample Candle programs:
+
+- **01.candle**: Basic dataset loading and splitting
+- **02.candle**: Dataset loading with analysis and training
+- **03.candle**: Training with evaluation metrics
+- **04.candle**: Model selection from YAML with evaluation
+- **script.candle**: Complete ML workflow with all features
+
+## Project Structure
+
+```
+candle_lang/
+├── Cargo.toml              # Project configuration
+├── README.md               # This file
+├── examples/
+│   └── valid/              # Example Candle programs
+│       ├── 01.candle
+│       ├── 02.candle
+│       ├── 03.candle
+│       ├── 04.candle
+│       ├── 05.candle
+│       └── script.candle
+└── src/
+    ├── main.rs             # CLI entry point
+    ├── token.rs            # Token types and structure
+    ├── tokenizer.rs        # Lexical analysis
+    ├── tokenizer/
+    │   ├── error.rs        # Tokenizer error types
+    │   └── tests.rs        # Tokenizer unit tests
+    ├── parser.rs           # Syntax analysis
+    └── parser/
+        ├── error.rs        # Parser error types
+        ├── statement.rs    # AST statement types
+        └── tests.rs        # Parser unit tests
+```
+
+## License
+
+This project is part of a Theory of Computation course project.
 
 ## Project Structure
 

@@ -1,0 +1,3 @@
+SELECT 'rcnn.yaml';
+TRAIN;
+EVALUATE mAP50, recall;

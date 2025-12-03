@@ -5,7 +5,7 @@ mod tests;
 
 pub use crate::{
     token::{Token, TokenType},
-    tokenizer::error::TokenizerResult,
+    tokenizer::error::{TokenizerError, TokenizerResult},
 };
 
 pub struct Tokenizer<R> {

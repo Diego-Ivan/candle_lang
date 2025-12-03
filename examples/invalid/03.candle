@@ -1,0 +1,3 @@
+LOAD kaggledataset;
+SPLIT { train 80, test 20 };
+EVALUATE mAP, precision, recall;
