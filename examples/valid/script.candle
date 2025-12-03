@@ -1,0 +1,14 @@
+LOAD oxfordpets;
+SELECT FROM 'yolov8m.yaml';
+
+SPLIT {
+  train: 80, 
+  test: 10, 
+  val: 10
+};
+TRAIN;
+
+EVALUATE mAP, recall, precision, AP50;
+
+PREDICT predictresults;
+ANALYZE health, confusionmatrix;

@@ -1,0 +1,3 @@
+LOAD kaggledataset;
+TRAIN;
+EVALUATE mAP, precision, recall;

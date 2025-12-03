@@ -1,0 +1,2 @@
+LOAD dota2025;
+SPLIT { train: 100 };
