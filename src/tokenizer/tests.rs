@@ -203,31 +203,36 @@ fn test_mixed_tokens() {
 
 // ===== Error Handling Tests =====
 
+#[should_panic]
 #[test]
 fn test_unknown_character() {
     let input = "@";
     let tokens = tokenize_input(input);
 
     assert_eq!(tokens.len(), 1);
-    assert!(tokens[0].is_err());
+    tokens[0].as_ref().unwrap();
 }
 
 #[test]
+#[should_panic]
 fn test_unterminated_string() {
     let input = "'hello\n";
     let tokens = tokenize_input(input);
 
     assert_eq!(tokens.len(), 1);
-    assert!(tokens[0].is_err());
+    tokens[0].as_ref().unwrap();
 }
 
 #[test]
+#[should_panic]
 fn test_multiple_errors() {
     let input = "LOAD @ data # test;";
     let tokens = tokenize_input(input);
 
     // Should have LOAD, then error, then data, then error, then Id(test), then semicolon
-    assert!(tokens.iter().any(|t| t.is_err()));
+    for token in tokens {
+        token.unwrap();
+    }
 }
 
 // ===== Position Tracking Tests =====

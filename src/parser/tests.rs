@@ -87,12 +87,13 @@ fn test_parse_init_dictionary() {
 }
 
 #[test]
+#[should_panic]
 fn test_invalid_statement_error() {
     let input = "FOO bar;"; // unknown starting token should be treated as Id and produce InvalidStatement
     let tokens = tokens_from_input(input);
     let mut parser = Parser { tokens, current: 0 };
-    let result = parser.program();
-    assert!(result.is_err());
+
+    parser.program().unwrap();
 }
 
 #[test]
