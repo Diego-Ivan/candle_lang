@@ -81,10 +81,10 @@ fn statement_printer(statements: &[Statement]) {
     }
 }
 
-fn tokens_from_input(input: &str) -> Vec<crate::token::Token> {
+fn tokens_from_input(input: &str) -> Result<Vec<crate::token::Token>, crate::tokenizer::TokenizerError> {
     let reader = BufReader::new(input.as_bytes());
     let tokenizer = crate::tokenizer::Tokenizer::new(reader);
-    tokenizer.map(|r| r.unwrap()).collect()
+    tokenizer.collect()
 }
 
 #[derive(ClapParser, Debug)]
@@ -107,19 +107,47 @@ fn main() {
         Command::Ast { path: file_path } => {
             let input = std::fs::read_to_string(file_path).unwrap();
 
-            let tokens = tokens_from_input(&input);
+            let tokens = match tokens_from_input(&input) {
+                Ok(tokens) => tokens,
+                Err(e) => {
+                    println!("Se encontró un error al tokenizar el código:");
+                    println!("{e}");
+
+                    println!("---CÓDIGO ORIGINAL---");
+                    println!("{input}");
+                    println!("--------------------");
+
+                    return;
+                }
+            };
             let mut parser = Parser::new(tokens);
 
             let program = match parser.program() {
                 Ok(stmts) => stmts,
                 Err(e) => {
-                    println!("Found an error while parsing code");
+                    println!("An error was found while parsing the code:");
                     println!("{e}");
+                    // Print where the error happened in the code
+                    let error_line = input
+                        .lines()
+                        .nth(e.token.get_line() - 1)
+                        .unwrap_or("<Could not retrieve line>");
+                    // println!("Line {}:{}: {}", e.token.get_line(), e.token.get_column(), error_line);
+                    println!("{error_line}");
+                    
+                    // Print column indicator
+                    if e.token.get_column() > 0 {
+                        let indicator = format!("{}^", " ".repeat(e.token.get_column() - 1));
+                        println!("{}", indicator);
+                    }
+
+                    println!("\n---ORIGINAL CODE---");
+                    println!("{input}");
                     return;
                 }
             };
 
-            println!("---CÓDIGO ORIGINAL---");
+            println!("---ORIGINAL CODE---");
 
             println!("{input}");
 

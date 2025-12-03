@@ -1,6 +1,6 @@
 LOAD images;
 SELECT FROM 'yolov8m.pth';
-SPLIT { train: 80, test: 20 };
+SPLIT: train: 80, test: 20;
 TRAIN;
 EVALUATE mAP, recall, precision, AP50;
 PREDICT results;

@@ -1,0 +1,3 @@
+LOAD oxfordpets;
+ANALYZE health, splits
+TRAIN;
