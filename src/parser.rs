@@ -52,26 +52,58 @@ macro_rules! expect_identifier {
         }
     }};
 }
+macro_rules! expect_semicolon {
+    ($parser: ident) => {
+        if !match_token!($parser, TokenType::Semicolon) {
+            return Err(ParserError::new(
+                $parser.peek().unwrap().clone(),
+                ParserErrorType::ExpectedSemicolon,
+            ));
+        }
+    };
+}
+
+macro_rules! expect_colon {
+    ($parser: ident) => {
+        if !match_token!($parser, TokenType::Colon) {
+            return Err(ParserError::new(
+                $parser.peek().unwrap().clone(),
+                ParserErrorType::ExpectedColon,
+            ));
+        }
+    };
+}
+macro_rules! expect_number {
+    ($parser: ident) => {
+        match $parser.peek() {
+            Some(next_token) => match next_token.get_type() {
+                TokenType::Number(num) => {
+                    let num = *num;
+                    $parser.advance();
+                    num
+                }
+                _ => {
+                    return Err(ParserError::new(
+                        $parser.peek().unwrap().clone(),
+                        ParserErrorType::ExpectedNumber,
+                    ));
+                }
+            },
+            None => panic!(""),
+        }
+    };
+}
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self { current: 0, tokens }
     }
+
     pub fn program(&mut self) -> ParserResult<Vec<Statement>> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             statements.push(self.statement()?);
-            macro_rules! expect_semicolon {
-                () => {
-                    if !match_token!(self, TokenType::Semicolon) {
-                        return Err(ParserError::new(
-                            self.peek().unwrap().clone(),
-                            ParserErrorType::ExpectedSemicolon,
-                        ));
-                    }
-                };
-            }
-            expect_semicolon!()
+            expect_semicolon!(self);
         }
 
         Ok(statements)
@@ -148,11 +180,11 @@ impl Parser {
     fn parse_argument_list(&mut self) -> ParserResult<Vec<String>> {
         let mut arguments = Vec::new();
 
-        arguments.push(String::from(expect_identifier!(self)));
+        arguments.push(expect_identifier!(self));
 
         while match_token!(self, TokenType::Comma) {
             let ident = expect_identifier!(self);
-            arguments.push(String::from(ident));
+            arguments.push(ident);
         }
 
         Ok(arguments)
@@ -177,47 +209,16 @@ impl Parser {
             ));
         }
 
-        macro_rules! expect_colon {
-            () => {
-                if !match_token!(self, TokenType::Colon) {
-                    return Err(ParserError::new(
-                        self.peek().unwrap().clone(),
-                        ParserErrorType::ExpectedColon,
-                    ));
-                }
-            };
-        }
-        macro_rules! expect_number {
-            () => {
-                match self.peek() {
-                    Some(next_token) => match next_token.get_type() {
-                        TokenType::Number(num) => {
-                            let num = *num;
-                            self.advance();
-                            num
-                        }
-                        _ => {
-                            return Err(ParserError::new(
-                                self.peek().unwrap().clone(),
-                                ParserErrorType::ExpectedNumber,
-                            ));
-                        }
-                    },
-                    None => panic!(""),
-                }
-            };
-        }
-
-        let id = String::from(expect_identifier!(self));
-        expect_colon!();
-        let num = expect_number!();
+        let id = expect_identifier!(self);
+        expect_colon!(self);
+        let num = expect_number!(self);
 
         result_map.insert(id, num);
 
         while match_token!(self, TokenType::Comma) {
-            let id = String::from(expect_identifier!(self));
-            expect_colon!();
-            let num = expect_number!();
+            let id = expect_identifier!(self);
+            expect_colon!(self);
+            let num = expect_number!(self);
             result_map.insert(id, num);
         }
 

@@ -1,4 +1,5 @@
-use std::io::BufReader;
+use clap::Parser as ClapParser;
+use std::{io::BufReader, path::PathBuf};
 
 use crate::parser::{Parser, Statement};
 
@@ -86,26 +87,47 @@ fn tokens_from_input(input: &str) -> Vec<crate::token::Token> {
     tokenizer.map(|r| r.unwrap()).collect()
 }
 
+#[derive(ClapParser, Debug)]
+#[command(name="pycandle", version = "0.5.0", about, long_about = None)]
+struct Arguments {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(clap::Subcommand, Clone, Debug)]
+enum Command {
+    /// Generates the Abstract-Syntax-Tree for a Candle file.
+    Ast { path: PathBuf },
+}
+
 fn main() {
-    let input = "LOAD oxfordpets;\nSPLIT {train: 80, test: 10, val: 10};\nANALYZE mAP, recall, precision, AP50;\nSELECT linearregression;";
-    let tokens = tokens_from_input(input);
-    let mut parser = Parser::new(tokens);
-    let program = match parser.program() {
-        Ok(stmts) => stmts,
-        Err(e) => {
-            println!("Found an error while parsing code");
-            println!("{e}");
-            return;
+    let args = Arguments::parse();
+
+    match args.command {
+        Command::Ast { path: file_path } => {
+            let input = std::fs::read_to_string(file_path).unwrap();
+
+            let tokens = tokens_from_input(&input);
+            let mut parser = Parser::new(tokens);
+
+            let program = match parser.program() {
+                Ok(stmts) => stmts,
+                Err(e) => {
+                    println!("Found an error while parsing code");
+                    println!("{e}");
+                    return;
+                }
+            };
+
+            println!("---CÓDIGO ORIGINAL---");
+
+            println!("{input}");
+
+            println!("--------------------");
+
+            println!("\n::AST::\n");
+
+            statement_printer(&program);
         }
-    };
-
-    println!("---CÓDIGO ORIGINAL---");
-
-    println!("{input}");
-
-    println!("--------------------");
-
-    print!("\n\n\n");
-
-    statement_printer(&program);
+    }
 }
