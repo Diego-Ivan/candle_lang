@@ -2,7 +2,7 @@ mod error;
 mod statement;
 #[cfg(test)]
 mod tests;
-use std::{collections::HashMap, result};
+use std::collections::HashMap;
 
 use crate::{
     parser::error::{ParserError, ParserErrorType, ParserResult},

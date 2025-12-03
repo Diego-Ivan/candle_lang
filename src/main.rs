@@ -6,41 +6,75 @@ mod parser;
 mod token;
 mod tokenizer;
 
+fn print_statement_name(
+    type_name: &str,
+    name: &str,
+    children: &[(&str, &str)],
+    indent_level: usize,
+) {
+    println!("|({type_name} {name})");
+
+    for (c_type, c_name) in children {
+        print!("|");
+        for _ in 0..indent_level + 1 {
+            print!("---")
+        }
+        println!("({c_type} {c_name})");
+    }
+}
+
 fn statement_printer(statements: &[Statement]) {
+    println!("PROGRAM");
     for stmt in statements {
         match stmt {
-            Statement::Load(name) => println!("stmt: LOAD {};", name),
-            Statement::Predict(name) => println!("stmt: PREDICT {};", name),
-            Statement::Analyze(args) => println!("stmt: ANALYZE {};", args.join(", ")),
-            Statement::Evaluate(args) => println!("stmt: EVALUATE {};", args.join(", ")),
+            Statement::Load(name) => {
+                print_statement_name("stmt", "LOAD", &[("id", name.as_ref())], 0)
+            }
+            Statement::Predict(name) => {
+                print_statement_name("stmt", "PREDICT", &[("id", name.as_ref())], 0);
+            }
+            Statement::Analyze(args) => {
+                let args: Vec<(&str, &str)> = args.iter().map(|arg| ("id", arg.as_ref())).collect();
+                print_statement_name("stmt", "ANALYZE", &args, 0);
+            }
+            Statement::Evaluate(args) => {
+                let args: Vec<(&str, &str)> = args.iter().map(|arg| ("id", arg.as_ref())).collect();
+                print_statement_name("stmt", "EVALUATE", &args, 0);
+            }
             Statement::Select(sel) => match sel {
                 crate::parser::Select::Identifier(id) => {
-                    println!("stmt: SELECT (IDENTIFIER VARIANT) ID: {};", id)
+                    print_statement_name("stmt", "SELECT", &[("id", id)], 0);
                 }
                 crate::parser::Select::From(path) => {
-                    println!("SELECT (FROM PATH VARIANT) PATH: '{}' ;", path)
+                    print_statement_name("stmt", "SELECT", &[("FROM", path)], 0);
                 }
             },
-            Statement::Train => println!("stmt: TRAIN;"),
+            Statement::Train => print_statement_name("stmt", "TRAIN", &[], 0),
             Statement::Init(map) => {
-                let mut items: Vec<_> = map.iter().collect();
-                items.sort_by_key(|(k, _)| *k);
-                let body = items
+                let items: Vec<(&str, String)> = map
                     .iter()
-                    .map(|(k, v)| format!("[KEY]{}: [VALUE]{}", k, v))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                println!("INIT {{ {} }};", body);
+                    .map(|(key, value)| {
+                        let entry_format = format!("key({key}), value({value})");
+                        ("entry", entry_format)
+                    })
+                    .collect();
+
+                let items: Vec<(&str, &str)> =
+                    items.iter().map(|(a, b)| (*a, b.as_ref())).collect();
+                print_statement_name("stmt", "INIT", &items, 0);
             }
             Statement::Split(map) => {
-                let mut items: Vec<_> = map.iter().collect();
-                items.sort_by_key(|(k, _)| *k);
-                let body = items
+                let items: Vec<(&str, String)> = map
                     .iter()
-                    .map(|(k, v)| format!("[KEY]{}: [VALUE]{}", k, v))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                println!("SPLIT {{ {} }};", body);
+                    .map(|(key, value)| {
+                        let entry_format = format!("key({key}), value({value})");
+                        ("entry", entry_format)
+                    })
+                    .collect();
+
+                let items: Vec<(&str, &str)> =
+                    items.iter().map(|(a, b)| (*a, b.as_ref())).collect();
+                print_statement_name("stmt", "SPLIT", &items, 0);
             }
         }
     }
@@ -53,10 +87,18 @@ fn tokens_from_input(input: &str) -> Vec<crate::token::Token> {
 }
 
 fn main() {
-    let input = "LOAD dataset;\nANALYZE field1, field2;\nSELECT result;";
+    let input = "LOAD dataset;\nSPLIT {train: 80, test: 10, val: 10};\nANALYZE mAP, recall, precision, AP50;\nSELECT linearregression;";
     let tokens = tokens_from_input(input);
     let mut parser = Parser::new(tokens);
     let program = parser.program().unwrap();
+
+    println!("---CÓDIGO ORIGINAL---");
+
+    println!("{input}");
+
+    println!("--------------------");
+
+    print!("\n\n\n");
 
     statement_printer(&program);
 }

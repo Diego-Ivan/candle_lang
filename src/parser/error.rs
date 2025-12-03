@@ -9,7 +9,6 @@ pub enum ParserErrorType {
     ExpectedSemicolon,
     NotADictionary,
     ExpectedNumber,
-    UnexpectedEof,
     InvalidStatement,
     NonTerminatedDictionary,
     InvalidSelect,
@@ -48,7 +47,6 @@ impl Display for ParserError {
                     self.token.get_type()
                 )
             }
-            ParserErrorType::UnexpectedEof => String::from("Unexpected End Of File"),
             ParserErrorType::InvalidStatement => {
                 format!(
                     "A statement cannot begin with the token {:?}",
