@@ -87,10 +87,17 @@ fn tokens_from_input(input: &str) -> Vec<crate::token::Token> {
 }
 
 fn main() {
-    let input = "LOAD dataset;\nSPLIT {train: 80, test: 10, val: 10};\nANALYZE mAP, recall, precision, AP50;\nSELECT linearregression;";
+    let input = "LOAD oxfordpets;\nSPLIT {train: 80, test: 10, val: 10};\nANALYZE mAP, recall, precision, AP50;\nSELECT linearregression;";
     let tokens = tokens_from_input(input);
     let mut parser = Parser::new(tokens);
-    let program = parser.program().unwrap();
+    let program = match parser.program() {
+        Ok(stmts) => stmts,
+        Err(e) => {
+            println!("Found an error while parsing code");
+            println!("{e}");
+            return;
+        }
+    };
 
     println!("---CÓDIGO ORIGINAL---");
 
