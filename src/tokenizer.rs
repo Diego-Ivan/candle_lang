@@ -3,7 +3,10 @@ mod error;
 #[cfg(test)]
 mod tests;
 
-pub use crate::{token::{Token, TokenType}, tokenizer::error::TokenizerResult};
+pub use crate::{
+    token::{Token, TokenType},
+    tokenizer::error::TokenizerResult,
+};
 
 pub struct Tokenizer<R> {
     _source: R,
@@ -23,7 +26,7 @@ where
         let mut input_buffer = String::new();
         // Read entire input as UTF-8 string
         let _ = std::io::Read::read_to_string(&mut reader, &mut input_buffer);
-        
+
         let mut tokenizer = Self {
             _source: reader,
             current_char: '\0',
@@ -85,10 +88,11 @@ where
     }
 
     fn skip_whitespace(&mut self) {
-        while self.current_char == ' ' 
-            || self.current_char == '\t' 
-            || self.current_char == '\n' 
-            || self.current_char == '\r' {
+        while self.current_char == ' '
+            || self.current_char == '\t'
+            || self.current_char == '\n'
+            || self.current_char == '\r'
+        {
             self.advance();
         }
     }
@@ -110,7 +114,7 @@ where
             self.buffer_pos += ch.len_utf8();
             return ch;
         }
-        
+
         self.input_buffer[self.buffer_pos..]
             .chars()
             .next()
@@ -123,11 +127,9 @@ where
 
     fn peek(&mut self) -> char {
         if self.peeked.is_none() {
-            self.peeked = self.input_buffer[self.buffer_pos..]
-                .chars()
-                .next();
+            self.peeked = self.input_buffer[self.buffer_pos..].chars().next();
         }
-        
+
         self.peeked.unwrap_or('\0')
     }
 
@@ -182,7 +184,12 @@ where
         }
     }
 
-    fn read_string(&mut self, quote: char, start_col: usize, start_line: usize) -> TokenizerResult<Token> {
+    fn read_string(
+        &mut self,
+        quote: char,
+        start_col: usize,
+        start_line: usize,
+    ) -> TokenizerResult<Token> {
         let mut string = String::new();
         self.advance(); // Skip opening quote
 
